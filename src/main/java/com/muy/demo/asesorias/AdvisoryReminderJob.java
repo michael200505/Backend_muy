@@ -19,23 +19,22 @@ public class AdvisoryReminderJob {
         this.jakarta = jakarta;
     }
 
-    // cada minuto revisa asesorías confirmadas próximas (ej: 30 min antes)
-    @Scheduled(fixedRate = 60_000)
+    // cada 1 minuto, envía recordatorio 30 min antes (ventana 29-31 min)
+    @Scheduled(initialDelay = 10_000, fixedDelay = 60_000)
     public void sendReminders() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime from = now.plusMinutes(29);
         LocalDateTime to = now.plusMinutes(31);
 
-        // solución rápida sin query nueva: traemos y filtramos (si tienes pocos)
-        // para producción, mejor query JPA específica
-        advisories.findAll().stream()
-                .filter(a -> a.getStatus() == AdvisoryStatus.CONFIRMED)
-                .filter(a -> !a.getStartAt().isBefore(from) && !a.getStartAt().isAfter(to))
+        advisories.findByStatusAndStartAtBetween(AdvisoryStatus.CONFIRMED, from, to)
                 .forEach(a -> {
-                    String msg = "Recordatorio: asesoría ID " + a.getId()
-                            + " inicia a las " + a.getStartAt();
-                    jakarta.notifyEmail(a.getProgrammer().getEmail(), "Recordatorio asesoría", msg);
-                    jakarta.notifyEmail(a.getExternalUser().getEmail(), "Recordatorio asesoría", msg);
+                    try {
+                        String msg = "Recordatorio: asesoría ID " + a.getId() + " inicia a las " + a.getStartAt();
+                        jakarta.notifyEmail(a.getProgrammer().getEmail(), "Recordatorio asesoría", msg);
+                        jakarta.notifyEmail(a.getExternalUser().getEmail(), "Recordatorio asesoría", msg);
+                    } catch (Exception e) {
+                        System.err.println("Error enviando recordatorio asesoría " + a.getId() + ": " + e.getMessage());
+                    }
                 });
     }
 }

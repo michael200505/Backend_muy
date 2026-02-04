@@ -31,6 +31,30 @@ public class JakartaClient {
         rest.exchange(url, HttpMethod.POST, new HttpEntity<>(payload, headers), Void.class);
     }
 
+    // ✅ GET (como lo tienes)
+    public byte[] getReportPdf(Long programmerId) {
+        String url = baseUrl + "/reports/advisories/pdf?programmerId=" + programmerId;
+        return rest.getForObject(url, byte[].class);
+    }
+
+    // ✅ POST (como te piden)
+    public byte[] generateAdvisoryPdf(Object payload) {
+        String url = baseUrl + "/reports/advisories/pdf";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Object> entity = new HttpEntity<>(payload, headers);
+
+        ResponseEntity<byte[]> response = rest.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                byte[].class
+        );
+
+        return response.getBody();
+    }
+
     public void notifyWhatsapp(String phone, String message) {
         String url = baseUrl + "/notifications/whatsapp";
         HttpHeaders headers = new HttpHeaders();

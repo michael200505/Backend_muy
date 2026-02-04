@@ -13,13 +13,20 @@ public interface AdvisoryRepository extends JpaRepository<Advisory, Long> {
     List<Advisory> findByProgrammerId(Long programmerId);
     List<Advisory> findByExternalUserId(Long externalUserId);
 
-    long countByProgrammerIdAndStatus(Long programmerId, AdvisoryStatus status);
-
+    // Para evitar doble reserva (si hay asesoría confirmada o pendiente que se cruce con el horario)
     @Query("""
-      select a.status, count(a)
-      from Advisory a
-      where a.programmer.id = :programmerId and a.startAt between :from and :to
-      group by a.status
+        select count(a) > 0
+        from Advisory a
+        where a.programmer.id = :programmerId
+          and a.status in (:s1, :s2)
+          and (a.startAt < :endAt and a.endAt > :startAt)
     """)
-    List<Object[]> statusCountsForProgrammer(Long programmerId, LocalDateTime from, LocalDateTime to);
+    boolean existsOverlap(Long programmerId,
+                          LocalDateTime startAt,
+                          LocalDateTime endAt,
+                          AdvisoryStatus s1,
+                          AdvisoryStatus s2);
+
+    // Recordatorios: asesorías confirmadas que empiezan en una ventana
+    List<Advisory> findByStatusAndStartAtBetween(AdvisoryStatus status, LocalDateTime from, LocalDateTime to);
 }
