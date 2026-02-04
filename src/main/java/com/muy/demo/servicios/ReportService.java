@@ -50,4 +50,31 @@ public class ReportService {
 
         return jakarta.generateAdvisoryPdf(payload);
     }
+
+    // ✅ NUEVO: Excel
+    public byte[] advisoryExcelForProgrammer(Long programmerId) {
+        var programmer = users.findById(programmerId)
+                .orElseThrow(() -> new IllegalArgumentException("Programmer no existe"));
+
+        var list = advisories.findByProgrammerId(programmerId);
+
+        List<com.muy.demo.modelosdto.ReportAdvisoryRow> rows = list.stream().map(a -> {
+            com.muy.demo.modelosdto.ReportAdvisoryRow r = new com.muy.demo.modelosdto.ReportAdvisoryRow();
+            r.id = a.getId();
+            r.programmerName = a.getProgrammer().getFullName();
+            r.externalName = a.getExternalUser().getFullName();
+            r.startAt = a.getStartAt().format(fmt);
+            r.endAt = a.getEndAt().format(fmt);
+            r.modality = a.getModality().name();
+            r.status = a.getStatus().name();
+            r.topic = a.getTopic();
+            return r;
+        }).toList();
+
+        com.muy.demo.modelosdto.ReportAdvisoryPdfRequest payload = new com.muy.demo.modelosdto.ReportAdvisoryPdfRequest();
+        payload.title = "Reporte de asesorías (Excel) - " + programmer.getFullName();
+        payload.rows = rows;
+
+        return jakarta.generateAdvisoryExcel(payload);
+    }
 }

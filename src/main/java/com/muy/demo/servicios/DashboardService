@@ -1,0 +1,70 @@
+package com.muy.demo.servicios;
+
+import com.muy.demo.modelosdto.ProgrammerDashboardResponse;
+import com.muy.demo.models.AdvisoryStatus;
+import com.muy.demo.repositorios.AdvisoryRepository;
+import com.muy.demo.repositorios.ProjectRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@Service
+public class DashboardService {
+
+    private final AdvisoryRepository advisories;
+    private final ProjectRepository projects;
+
+    private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    public DashboardService(AdvisoryRepository advisories, ProjectRepository projects) {
+        this.advisories = advisories;
+        this.projects = projects;
+    }
+
+    public ProgrammerDashboardResponse programmer(Long programmerId) {
+        ProgrammerDashboardResponse res = new ProgrammerDashboardResponse();
+
+        // 1) conteo por estado
+        Map<String, Long> byStatus = new LinkedHashMap<>();
+        for (AdvisoryStatus s : AdvisoryStatus.values()) {
+            byStatus.put(s.name(), advisories.countByProgrammerIdAndStatus(programmerId, s));
+        }
+        res.advisoriesByStatus = byStatus;
+
+        // 2) proyectos activos
+        res.activeProjects = projects.countByProgrammerIdAndActiveTrue(programmerId);
+
+        // 3) próximas confirmadas
+        var upcoming = advisories.findUpcomingConfirmed(programmerId, LocalDateTime.now())
+                .stream()
+                .limit(5)
+                .map(a -> {
+                    var item = new ProgrammerDashboardResponse.UpcomingAdvisoryItem();
+                    item.id = a.getId();
+                    item.startAt = a.getStartAt().format(fmt);
+                    item.endAt = a.getEndAt().format(fmt);
+                    item.externalName = a.getExternalUser().getFullName();
+                    item.topic = a.getTopic();
+                    item.modality = a.getModality().name();
+                    return item;
+                }).toList();
+        res.upcoming = upcoming;
+
+        // 4) últimos 6 meses (conteo por mes)
+        LocalDateTime from = LocalDateTime.now().minusMonths(6);
+        List<Object[]> rows = advisories.countByMonth(programmerId, from);
+
+        List<ProgrammerDashboardResponse.MonthlyCount> monthly = new ArrayList<>();
+        for (Object[] r : rows) {
+            var mc = new ProgrammerDashboardResponse.MonthlyCount();
+            mc.yearMonth = String.valueOf(r[0]);
+            mc.count = ((Number) r[1]).longValue();
+            monthly.add(mc);
+        }
+        res.monthly = monthly;
+
+        return res;
+    }
+}

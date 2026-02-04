@@ -1,0 +1,25 @@
+package com.muy.demo.controladores;
+
+import com.muy.demo.modelosdto.ProgrammerDashboardResponse;
+import com.muy.demo.servicios.DashboardService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/dashboard")
+@CrossOrigin(origins = "*")
+public class DashboardController {
+
+    private final DashboardService dashboard;
+
+    public DashboardController(DashboardService dashboard) {
+        this.dashboard = dashboard;
+    }
+
+    @GetMapping("/programmer/{programmerId}")
+    @PreAuthorize("hasAnyRole('PROGRAMMER','ADMIN')")
+    public ResponseEntity<ProgrammerDashboardResponse> programmer(@PathVariable Long programmerId) {
+        return ResponseEntity.ok(dashboard.programmer(programmerId));
+    }
+}

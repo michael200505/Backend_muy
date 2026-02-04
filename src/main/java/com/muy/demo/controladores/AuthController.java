@@ -4,6 +4,7 @@ import com.muy.demo.modelosdto.*;
 import com.muy.demo.servicios.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,9 +23,16 @@ public class AuthController {
         return ResponseEntity.ok(auth.login(req));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
-        auth.register(req);
+    @PostMapping("/register-external")
+    public ResponseEntity<?> registerExternal(@Valid @RequestBody RegisterRequest req) {
+        auth.registerExternal(req);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/admin/register-user")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> adminCreate(@Valid @RequestBody com.muy.demo.modelosdto.AdminCreateUserRequest req) {
+        auth.adminCreateUser(req);
         return ResponseEntity.ok().build();
     }
 }

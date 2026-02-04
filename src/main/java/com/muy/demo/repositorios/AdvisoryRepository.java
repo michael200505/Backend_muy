@@ -13,6 +13,31 @@ public interface AdvisoryRepository extends JpaRepository<Advisory, Long> {
     List<Advisory> findByProgrammerId(Long programmerId);
     List<Advisory> findByExternalUserId(Long externalUserId);
 
+    // ✅ NUEVO: conteo por estado para un programador
+    long countByProgrammerIdAndStatus(Long programmerId, AdvisoryStatus status);
+
+    // ✅ NUEVO: próximas asesorías CONFIRMED a partir de "now"
+    @Query("""
+       select a
+       from Advisory a
+       where a.programmer.id = :programmerId
+         and a.status = com.muy.demo.models.AdvisoryStatus.CONFIRMED
+         and a.startAt >= :now
+       order by a.startAt asc
+    """)
+    List<Advisory> findUpcomingConfirmed(Long programmerId, LocalDateTime now);
+
+    // ✅ NUEVO: conteo por mes (usa date_format de MySQL)
+    @Query("""
+       select function('date_format', a.startAt, '%Y-%m') as ym, count(a)
+       from Advisory a
+       where a.programmer.id = :programmerId
+         and a.startAt >= :from
+       group by function('date_format', a.startAt, '%Y-%m')
+       order by ym asc
+    """)
+    List<Object[]> countByMonth(Long programmerId, LocalDateTime from);
+
     // Para evitar doble reserva (si hay asesoría confirmada o pendiente que se cruce con el horario)
     @Query("""
         select count(a) > 0

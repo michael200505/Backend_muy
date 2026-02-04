@@ -37,7 +37,7 @@ public class JakartaClient {
         return rest.getForObject(url, byte[].class);
     }
 
-    // ✅ POST (como te piden)
+    // ✅ POST PDF (como te piden)
     public byte[] generateAdvisoryPdf(Object payload) {
         String url = baseUrl + "/reports/advisories/pdf";
         HttpHeaders headers = new HttpHeaders();
@@ -48,6 +48,24 @@ public class JakartaClient {
         ResponseEntity<byte[]> response = rest.exchange(
                 url,
                 HttpMethod.POST,
+                entity,
+                byte[].class
+        );
+
+        return response.getBody();
+    }
+
+    // ✅ POST EXCEL (nuevo, además del PDF)
+    public byte[] generateAdvisoryExcel(Object payload) {
+        String url = baseUrl + "/reports/advisories/excel";
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+        var entity = new org.springframework.http.HttpEntity<>(payload, headers);
+
+        var response = rest.exchange(
+                url,
+                org.springframework.http.HttpMethod.POST,
                 entity,
                 byte[].class
         );

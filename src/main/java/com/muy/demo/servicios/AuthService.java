@@ -40,4 +40,27 @@ public class AuthService {
         u.setRole(req.role != null ? req.role : Role.EXTERNAL);
         users.save(u);
     }
+
+    // ✅ NUEVO: fuerza EXTERNAL y reutiliza register()
+    public void registerExternal(RegisterRequest req) {
+        // fuerza EXTERNAL
+        req.role = com.muy.demo.models.Role.EXTERNAL;
+        register(req);
+    }
+
+    // ✅ NUEVO: creación de usuario por ADMIN (solo PROGRAMMER o ADMIN)
+    public void adminCreateUser(AdminCreateUserRequest req) {
+        if (users.existsByEmail(req.email)) throw new IllegalArgumentException("Email ya registrado");
+
+        if (req.role != com.muy.demo.models.Role.PROGRAMMER && req.role != com.muy.demo.models.Role.ADMIN) {
+            throw new IllegalArgumentException("ADMIN solo puede crear PROGRAMMER o ADMIN");
+        }
+
+        com.muy.demo.models.User u = new com.muy.demo.models.User();
+        u.setFullName(req.fullName);
+        u.setEmail(req.email);
+        u.setPasswordHash(encoder.encode(req.password));
+        u.setRole(req.role);
+        users.save(u);
+    }
 }
