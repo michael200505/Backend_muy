@@ -90,4 +90,34 @@ public interface AdvisoryRepository extends JpaRepository<Advisory, Long> {
       order by a.startAt desc
     """)
     List<Advisory> findByExternalEmail(@Param("email") String email);
+
+    // =========================
+    // ✅ DASHBOARD: rango + estado
+    // =========================
+
+    // Conteo por estado en un rango de fechas (para dashboard)
+    @Query("""
+       select a.status as st, count(a) as cnt
+       from Advisory a
+       where a.programmer.id = :programmerId
+         and a.startAt between :from and :to
+       group by a.status
+    """)
+    List<Object[]> countByStatusInRange(@Param("programmerId") Long programmerId,
+                                        @Param("from") LocalDateTime from,
+                                        @Param("to") LocalDateTime to);
+
+    // Lista filtrada por rango + (opcional) estado
+    @Query("""
+       select a
+       from Advisory a
+       where a.programmer.id = :programmerId
+         and (:status is null or a.status = :status)
+         and a.startAt between :from and :to
+       order by a.startAt desc
+    """)
+    List<Advisory> filterForDashboard(@Param("programmerId") Long programmerId,
+                                      @Param("status") AdvisoryStatus status,
+                                      @Param("from") LocalDateTime from,
+                                      @Param("to") LocalDateTime to);
 }

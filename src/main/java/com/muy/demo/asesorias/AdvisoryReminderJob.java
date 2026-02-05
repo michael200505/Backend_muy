@@ -26,15 +26,27 @@ public class AdvisoryReminderJob {
         LocalDateTime from = now.plusMinutes(29);
         LocalDateTime to = now.plusMinutes(31);
 
-        advisories.findByStatusAndStartAtBetween(AdvisoryStatus.CONFIRMED, from, to)
-                .forEach(a -> {
-                    try {
-                        String msg = "Recordatorio: asesoría ID " + a.getId() + " inicia a las " + a.getStartAt();
-                        jakarta.notifyEmail(a.getProgrammer().getEmail(), "Recordatorio asesoría", msg);
-                        jakarta.notifyEmail(a.getExternalUser().getEmail(), "Recordatorio asesoría", msg);
-                    } catch (Exception e) {
-                        System.err.println("Error enviando recordatorio asesoría " + a.getId() + ": " + e.getMessage());
-                    }
-                });
+       advisories.findByStatusAndStartAtBetween(AdvisoryStatus.CONFIRMED, from, to)
+        .forEach(a -> {
+            try {
+                String msg = "Recordatorio: asesoría ID " + a.getId() + " inicia a las " + a.getStartAt();
+
+                // email
+                jakarta.notifyEmail(a.getProgrammer().getEmail(), "Recordatorio asesoría", msg);
+                jakarta.notifyEmail(a.getExternalUser().getEmail(), "Recordatorio asesoría", msg);
+
+                // ---- WhatsApp (simulado) ----
+                if (a.getProgrammer().getPhone() != null && !a.getProgrammer().getPhone().isBlank()) {
+                    jakarta.notifyWhatsapp(a.getProgrammer().getPhone(), msg);
+                }
+                if (a.getExternalUser().getPhone() != null && !a.getExternalUser().getPhone().isBlank()) {
+                    jakarta.notifyWhatsapp(a.getExternalUser().getPhone(), msg);
+                }
+
+            } catch (Exception e) {
+                System.err.println("Error enviando recordatorio asesoría " + a.getId() + ": " + e.getMessage());
+            }
+        });
+
     }
 }

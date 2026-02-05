@@ -1,6 +1,8 @@
 package com.muy.demo.servicios;
 
+import com.muy.demo.modelosdto.AdvisoryDashboardFilterResponse;
 import com.muy.demo.modelosdto.ProgrammerDashboardResponse;
+import com.muy.demo.modelosdto.ProjectDashboardResponse;
 import com.muy.demo.models.AdvisoryStatus;
 import com.muy.demo.repositorios.AdvisoryRepository;
 import com.muy.demo.repositorios.ProjectRepository;
@@ -65,6 +67,63 @@ public class DashboardService {
         }
         res.monthly = monthly;
 
+        return res;
+    }
+
+    // =========================
+    // ✅ NUEVO: Dashboard filtrado de asesorías
+    // =========================
+    public AdvisoryDashboardFilterResponse advisoriesFiltered(Long programmerId,
+                                                             AdvisoryStatus status,
+                                                             LocalDateTime from,
+                                                             LocalDateTime to) {
+        AdvisoryDashboardFilterResponse res = new AdvisoryDashboardFilterResponse();
+
+        // Conteos por estado en rango
+        var rows = advisories.countByStatusInRange(programmerId, from, to);
+        var map = new LinkedHashMap<String, Long>();
+
+        for (var r : rows) {
+            map.put(String.valueOf(r[0]), ((Number) r[1]).longValue());
+        }
+
+        // Asegurar estados aunque no existan
+        for (AdvisoryStatus s : AdvisoryStatus.values()) {
+            map.putIfAbsent(s.name(), 0L);
+        }
+        res.countsByStatus = map;
+
+        // Lista filtrada
+        DateTimeFormatter fmtLocal = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        res.items = advisories.filterForDashboard(programmerId, status, from, to)
+                .stream()
+                .map(a -> {
+                    var it = new AdvisoryDashboardFilterResponse.Item();
+                    it.id = a.getId();
+                    it.startAt = a.getStartAt().format(fmtLocal);
+                    it.endAt = a.getEndAt().format(fmtLocal);
+                    it.externalName = a.getExternalUser().getFullName();
+                    it.status = a.getStatus().name();
+                    it.modality = a.getModality().name();
+                    it.topic = a.getTopic();
+                    return it;
+                })
+                .toList();
+
+        return res;
+    }
+
+    // =========================
+    // ✅ NUEVO: Dashboard de proyectos
+    // =========================
+    public ProjectDashboardResponse projectsDashboard(Long programmerId) {
+        long total = projects.countByProgrammerId(programmerId);
+        long active = projects.countByProgrammerIdAndActiveTrue(programmerId);
+
+        ProjectDashboardResponse res = new ProjectDashboardResponse();
+        res.totalCreated = total;
+        res.active = active;
+        res.inactive = total - active;
         return res;
     }
 }

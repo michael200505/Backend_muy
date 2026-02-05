@@ -88,6 +88,7 @@ public class AdvisoryService {
 
         Advisory saved = advisories.save(a);
 
+        // emails
         jakarta.notifyEmail(programmer.getEmail(),
                 "Nueva asesoría solicitada",
                 "Tienes una solicitud de asesoría.\nID: " + saved.getId() +
@@ -98,11 +99,13 @@ public class AdvisoryService {
                 "Asesoría solicitada",
                 "Tu asesoría fue creada y está PENDIENTE.\nID: " + saved.getId());
 
-        // =========================
-        // ✅ WhatsApp (después de emails)
-        // =========================
-        String wMsgP = "Nueva asesoría solicitada. ID: " + saved.getId() + " Inicio: " + saved.getStartAt();
-        String wMsgE = "Tu asesoría fue solicitada. ID: " + saved.getId() + " Estado: PENDING";
+        // ---- WhatsApp (simulado) ----
+        String wMsgP = "Nueva asesoría solicitada. ID: " + saved.getId()
+                + " Inicio: " + saved.getStartAt()
+                + " Modalidad: " + saved.getModality();
+
+        String wMsgE = "Tu asesoría fue solicitada. ID: " + saved.getId()
+                + " Estado: " + saved.getStatus();
 
         if (programmer.getPhone() != null && !programmer.getPhone().isBlank()) {
             jakarta.notifyWhatsapp(programmer.getPhone(), wMsgP);
@@ -139,8 +142,18 @@ public class AdvisoryService {
         Advisory saved = advisories.save(a);
 
         String msg = "Asesoría ID " + saved.getId() + " ahora está: " + saved.getStatus();
+
+        // emails
         jakarta.notifyEmail(saved.getProgrammer().getEmail(), "Actualización de asesoría", msg);
         jakarta.notifyEmail(saved.getExternalUser().getEmail(), "Actualización de asesoría", msg);
+
+        // ---- WhatsApp (simulado) ----
+        if (saved.getProgrammer().getPhone() != null && !saved.getProgrammer().getPhone().isBlank()) {
+            jakarta.notifyWhatsapp(saved.getProgrammer().getPhone(), msg);
+        }
+        if (saved.getExternalUser().getPhone() != null && !saved.getExternalUser().getPhone().isBlank()) {
+            jakarta.notifyWhatsapp(saved.getExternalUser().getPhone(), msg);
+        }
 
         return saved;
     }

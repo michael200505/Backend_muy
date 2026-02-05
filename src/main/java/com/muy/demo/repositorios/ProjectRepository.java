@@ -10,6 +10,10 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByProgrammerId(Long programmerId);
 
+    // ✅ NUEVO: total de proyectos del programador
+    long countByProgrammerId(Long programmerId);
+
+    // ✅ YA EXISTE: total de proyectos activos del programador
     long countByProgrammerIdAndActiveTrue(Long programmerId);
 
     @Query("select p from Project p where p.programmer.email = :email")

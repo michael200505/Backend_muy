@@ -1,12 +1,17 @@
 package com.muy.demo.controladores;
 
+import com.muy.demo.modelosdto.AdvisoryDashboardFilterResponse;
 import com.muy.demo.modelosdto.ProgrammerDashboardResponse;
+import com.muy.demo.modelosdto.ProjectDashboardResponse;
+import com.muy.demo.models.AdvisoryStatus;
 import com.muy.demo.repositorios.UserRepository;
 import com.muy.demo.seguridad.AuthUtil;
 import com.muy.demo.servicios.DashboardService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -35,5 +40,28 @@ public class DashboardController {
         String email = AuthUtil.currentEmail();
         Long programmerId = users.findIdByEmail(email);
         return ResponseEntity.ok(dashboard.programmer(programmerId));
+    }
+
+    // =========================
+    // ✅ NUEVOS ENDPOINTS
+    // =========================
+
+    @GetMapping("/programmer/{programmerId}/advisories")
+    @PreAuthorize("hasAnyRole('PROGRAMMER','ADMIN')")
+    public ResponseEntity<AdvisoryDashboardFilterResponse> advisoriesFiltered(
+            @PathVariable Long programmerId,
+            @RequestParam String from,
+            @RequestParam String to,
+            @RequestParam(required = false) AdvisoryStatus status
+    ) {
+        LocalDateTime f = LocalDateTime.parse(from);
+        LocalDateTime t = LocalDateTime.parse(to);
+        return ResponseEntity.ok(dashboard.advisoriesFiltered(programmerId, status, f, t));
+    }
+
+    @GetMapping("/programmer/{programmerId}/projects")
+    @PreAuthorize("hasAnyRole('PROGRAMMER','ADMIN')")
+    public ResponseEntity<ProjectDashboardResponse> projectsDashboard(@PathVariable Long programmerId) {
+        return ResponseEntity.ok(dashboard.projectsDashboard(programmerId));
     }
 }
