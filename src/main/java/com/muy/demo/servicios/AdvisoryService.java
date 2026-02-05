@@ -34,6 +34,10 @@ public class AdvisoryService {
         this.jakarta = jakarta;
     }
 
+    // =========================
+    // ✅ MÉTODOS "VIEJOS" (por ID) - los puedes dejar
+    // =========================
+
     @Transactional
     public Advisory create(CreateAdvisoryRequest req) {
         User programmer = users.findById(req.programmerId)
@@ -48,7 +52,6 @@ public class AdvisoryService {
             throw new IllegalArgumentException("endAt debe ser mayor que startAt");
         }
 
-        // 1) validar disponibilidad del programador para ese día/hora y modalidad
         DayOfWeek day = req.startAt.getDayOfWeek();
         LocalTime startT = req.startAt.toLocalTime();
         LocalTime endT = req.endAt.toLocalTime();
@@ -65,7 +68,6 @@ public class AdvisoryService {
             throw new IllegalArgumentException("Horario no disponible para ese programador (día/modality/hora).");
         }
 
-        // 2) validar que no se cruce con otra asesoría pendiente/confirmada del mismo programador
         boolean overlap = advisories.existsOverlap(
                 programmer.getId(),
                 req.startAt,
@@ -73,9 +75,7 @@ public class AdvisoryService {
                 AdvisoryStatus.PENDING,
                 AdvisoryStatus.CONFIRMED
         );
-        if (overlap) {
-            throw new IllegalArgumentException("Ya existe una asesoría en ese horario.");
-        }
+        if (overlap) throw new IllegalArgumentException("Ya existe una asesoría en ese horario.");
 
         Advisory a = new Advisory();
         a.setProgrammer(programmer);
@@ -88,7 +88,6 @@ public class AdvisoryService {
 
         Advisory saved = advisories.save(a);
 
-        // 3) notificar a Jakarta (correo al programador y externo)
         jakarta.notifyEmail(programmer.getEmail(),
                 "Nueva asesoría solicitada",
                 "Tienes una solicitud de asesoría.\nID: " + saved.getId() +
@@ -107,7 +106,6 @@ public class AdvisoryService {
         Advisory a = advisories.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Asesoría no existe"));
 
-        // Reglas básicas de estado
         if (a.getStatus() == AdvisoryStatus.CANCELLED) {
             throw new IllegalArgumentException("No se puede modificar una asesoría CANCELLED");
         }
@@ -122,22 +120,6 @@ public class AdvisoryService {
             a.setRejectionReason(req.rejectionReason);
         } else {
             a.setRejectionReason(null);
-        }
-
-        // Si CONFIRMED, validar otra vez que no se cruzó con algo (por si hubo dos pendientes)
-        if (req.status == AdvisoryStatus.CONFIRMED) {
-            boolean overlap = advisories.existsOverlap(
-                    a.getProgrammer().getId(),
-                    a.getStartAt(),
-                    a.getEndAt(),
-                    AdvisoryStatus.CONFIRMED,
-                    AdvisoryStatus.PENDING
-            );
-            // OJO: esta validación contará la misma asesoría como overlap si no la excluimos.
-            // Para simplificar, permitimos confirmar si ya estaba en PENDING y no hay otras cruzadas.
-            // Si quieres 100% exacto, hago query "existsOverlapExcludingId".
-            // Aquí hacemos una validación más simple:
-            // -> si había otra asesoría en el mismo horario, normalmente ya existía desde create().
         }
 
         a.setStatus(req.status);
@@ -156,5 +138,99 @@ public class AdvisoryService {
 
     public List<Advisory> listByExternal(Long externalUserId) {
         return advisories.findByExternalUserId(externalUserId);
+    }
+
+    // =========================
+    // ✅ MÉTODOS SEGUROS (por email del token)
+    // =========================
+
+    @Transactional
+    public Advisory createAsExternal(String externalEmail, CreateAdvisoryRequest req) {
+        // External autenticado (sale del token)
+        User external = users.findByEmail(externalEmail)
+                .orElseThrow(() -> new IllegalArgumentException("External no existe"));
+        if (external.getRole() != Role.EXTERNAL) throw new IllegalArgumentException("No eres EXTERNAL");
+
+        // Programmer viene del request (el external elige a quién)
+        User programmer = users.findById(req.programmerId)
+                .orElseThrow(() -> new IllegalArgumentException("Programmer no existe"));
+        if (programmer.getRole() != Role.PROGRAMMER) throw new IllegalArgumentException("El usuario no es PROGRAMMER");
+
+        if (!req.endAt.isAfter(req.startAt)) throw new IllegalArgumentException("endAt debe ser mayor que startAt");
+
+        // Validar disponibilidad
+        DayOfWeek day = req.startAt.getDayOfWeek();
+        LocalTime startT = req.startAt.toLocalTime();
+        LocalTime endT = req.endAt.toLocalTime();
+
+        var slots = availabilityRepo.findByProgrammerIdAndDayOfWeek(programmer.getId(), day);
+
+        boolean matches = slots.stream().anyMatch(s ->
+                s.getModality() == req.modality &&
+                        !startT.isBefore(s.getStartTime()) &&
+                        !endT.isAfter(s.getEndTime())
+        );
+
+        if (!matches) throw new IllegalArgumentException("Horario no disponible para ese programador.");
+
+        // Evitar cruce
+        boolean overlap = advisories.existsOverlap(
+                programmer.getId(), req.startAt, req.endAt,
+                AdvisoryStatus.PENDING, AdvisoryStatus.CONFIRMED
+        );
+        if (overlap) throw new IllegalArgumentException("Ya existe una asesoría en ese horario.");
+
+        Advisory a = new Advisory();
+        a.setProgrammer(programmer);
+        a.setExternalUser(external);
+        a.setStartAt(req.startAt);
+        a.setEndAt(req.endAt);
+        a.setModality(req.modality);
+        a.setTopic(req.topic);
+        a.setStatus(AdvisoryStatus.PENDING);
+
+        Advisory saved = advisories.save(a);
+
+        jakarta.notifyEmail(programmer.getEmail(), "Nueva asesoría solicitada",
+                "Tienes una solicitud. ID: " + saved.getId() + " - " + saved.getStartAt());
+
+        jakarta.notifyEmail(external.getEmail(), "Asesoría solicitada",
+                "Tu asesoría fue creada (PENDIENTE). ID: " + saved.getId());
+
+        return saved;
+    }
+
+    @Transactional
+    public Advisory updateStatusAsProgrammer(String programmerEmail, Long advisoryId, UpdateAdvisoryStatusRequest req) {
+        Advisory a = advisories.findByIdAndProgrammerEmail(advisoryId, programmerEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Asesoría no existe o no te pertenece"));
+
+        if (a.getStatus() == AdvisoryStatus.CANCELLED) throw new IllegalArgumentException("No se modifica CANCELLED");
+
+        if (req.status == AdvisoryStatus.REJECTED) {
+            if (req.rejectionReason == null || req.rejectionReason.isBlank()) {
+                throw new IllegalArgumentException("rejectionReason obligatorio si REJECTED");
+            }
+            a.setRejectionReason(req.rejectionReason);
+        } else {
+            a.setRejectionReason(null);
+        }
+
+        a.setStatus(req.status);
+        Advisory saved = advisories.save(a);
+
+        String msg = "Asesoría ID " + saved.getId() + " ahora está: " + saved.getStatus();
+        jakarta.notifyEmail(saved.getProgrammer().getEmail(), "Actualización de asesoría", msg);
+        jakarta.notifyEmail(saved.getExternalUser().getEmail(), "Actualización de asesoría", msg);
+
+        return saved;
+    }
+
+    public List<Advisory> listByProgrammerEmail(String programmerEmail) {
+        return advisories.findByProgrammerEmail(programmerEmail);
+    }
+
+    public List<Advisory> listByExternalEmail(String externalEmail) {
+        return advisories.findByExternalEmail(externalEmail);
     }
 }

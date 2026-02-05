@@ -3,6 +3,7 @@ package com.muy.demo.controladores;
 import com.muy.demo.modelosdto.CreateProjectRequest;
 import com.muy.demo.modelosdto.UpdateProjectRequest;
 import com.muy.demo.models.Project;
+import com.muy.demo.seguridad.AuthUtil;
 import com.muy.demo.servicios.ProjectService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -25,22 +26,27 @@ public class ProjectController {
 
     @PostMapping
     public ResponseEntity<Project> create(@Valid @RequestBody CreateProjectRequest req) {
-        return ResponseEntity.ok(service.create(req));
+        // ignoramos programmerId del body (si viene)
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.createForProgrammer(email, req));
     }
 
-    @GetMapping("/programmer/{programmerId}")
-    public ResponseEntity<List<Project>> byProgrammer(@PathVariable Long programmerId) {
-        return ResponseEntity.ok(service.listByProgrammer(programmerId));
+    @GetMapping("/me")
+    public ResponseEntity<List<Project>> myProjects() {
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.listByProgrammerEmail(email));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Project> update(@PathVariable Long id, @RequestBody UpdateProjectRequest req) {
-        return ResponseEntity.ok(service.update(id, req));
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.updateOwned(email, id, req));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
-        service.delete(id);
+        String email = AuthUtil.currentEmail();
+        service.deleteOwned(email, id);
         return ResponseEntity.ok().build();
     }
 }

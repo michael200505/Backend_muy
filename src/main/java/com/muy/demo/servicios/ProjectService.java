@@ -22,6 +22,10 @@ public class ProjectService {
         this.users = users;
     }
 
+    // =========================
+    // ✅ MÉTODOS "VIEJOS" (por ID) - los puedes mantener
+    // =========================
+
     @Transactional
     public Project create(CreateProjectRequest req) {
         var programmer = users.findById(req.programmerId)
@@ -60,6 +64,64 @@ public class ProjectService {
 
     @Transactional
     public void delete(Long id) {
+        projects.deleteById(id);
+    }
+
+    // =========================
+    // ✅ MÉTODOS SEGUROS (por email del token / endpoints /me)
+    // =========================
+
+    @Transactional
+    public Project createForProgrammer(String programmerEmail, CreateProjectRequest req) {
+        var programmer = users.findByEmail(programmerEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No existe"));
+        if (programmer.getRole() != Role.PROGRAMMER) {
+            throw new IllegalArgumentException("No PROGRAMMER");
+        }
+
+        Project p = new Project();
+        p.setTitle(req.title);
+        p.setDescription(req.description);
+        p.setRepoUrl(req.repoUrl);
+        p.setDemoUrl(req.demoUrl);
+        p.setProgrammer(programmer);
+        p.setActive(true);
+        return projects.save(p);
+    }
+
+    public List<Project> listByProgrammerEmail(String email) {
+        return projects.findByProgrammerEmail(email);
+    }
+
+    @Transactional
+    public Project updateOwned(String programmerEmail, Long id, UpdateProjectRequest req) {
+        Project p = projects.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No existe"));
+
+        if (p.getProgrammer() == null || p.getProgrammer().getEmail() == null ||
+                !p.getProgrammer().getEmail().equals(programmerEmail)) {
+            throw new IllegalArgumentException("No te pertenece");
+        }
+
+        if (req.title != null) p.setTitle(req.title);
+        if (req.description != null) p.setDescription(req.description);
+        if (req.repoUrl != null) p.setRepoUrl(req.repoUrl);
+        if (req.demoUrl != null) p.setDemoUrl(req.demoUrl);
+        if (req.active != null) p.setActive(req.active);
+
+        return projects.save(p);
+    }
+
+    @Transactional
+    public void deleteOwned(String programmerEmail, Long id) {
+        Project p = projects.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No existe"));
+
+        if (p.getProgrammer() == null || p.getProgrammer().getEmail() == null ||
+                !p.getProgrammer().getEmail().equals(programmerEmail)) {
+            throw new IllegalArgumentException("No te pertenece");
+        }
+
         projects.deleteById(id);
     }
 }

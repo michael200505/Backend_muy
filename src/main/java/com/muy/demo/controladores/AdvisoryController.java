@@ -3,6 +3,7 @@ package com.muy.demo.controladores;
 import com.muy.demo.modelosdto.CreateAdvisoryRequest;
 import com.muy.demo.modelosdto.UpdateAdvisoryStatusRequest;
 import com.muy.demo.models.Advisory;
+import com.muy.demo.seguridad.AuthUtil;
 import com.muy.demo.servicios.AdvisoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,27 +23,35 @@ public class AdvisoryController {
         this.service = service;
     }
 
+    // EXTERNAL crea asesoría: ya no manda externalUserId, sale del token
     @PostMapping
     @PreAuthorize("hasRole('EXTERNAL')")
     public ResponseEntity<Advisory> create(@Valid @RequestBody CreateAdvisoryRequest req) {
-        return ResponseEntity.ok(service.create(req));
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.createAsExternal(email, req));
     }
 
+    // PROGRAMMER confirma/rechaza SOLO lo suyo
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('PROGRAMMER')")
     public ResponseEntity<Advisory> updateStatus(@PathVariable Long id, @Valid @RequestBody UpdateAdvisoryStatusRequest req) {
-        return ResponseEntity.ok(service.updateStatus(id, req));
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.updateStatusAsProgrammer(email, id, req));
     }
 
-    @GetMapping("/programmer/{programmerId}")
+    // Historial del programador autenticado
+    @GetMapping("/me/programmer")
     @PreAuthorize("hasRole('PROGRAMMER')")
-    public ResponseEntity<List<Advisory>> byProgrammer(@PathVariable Long programmerId) {
-        return ResponseEntity.ok(service.listByProgrammer(programmerId));
+    public ResponseEntity<List<Advisory>> myAsProgrammer() {
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.listByProgrammerEmail(email));
     }
 
-    @GetMapping("/external/{externalUserId}")
+    // Historial del externo autenticado
+    @GetMapping("/me/external")
     @PreAuthorize("hasRole('EXTERNAL')")
-    public ResponseEntity<List<Advisory>> byExternal(@PathVariable Long externalUserId) {
-        return ResponseEntity.ok(service.listByExternal(externalUserId));
+    public ResponseEntity<List<Advisory>> myAsExternal() {
+        String email = AuthUtil.currentEmail();
+        return ResponseEntity.ok(service.listByExternalEmail(email));
     }
 }

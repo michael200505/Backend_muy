@@ -1,6 +1,8 @@
 package com.muy.demo.controladores;
 
 import com.muy.demo.modelosdto.ProgrammerDashboardResponse;
+import com.muy.demo.repositorios.UserRepository;
+import com.muy.demo.seguridad.AuthUtil;
 import com.muy.demo.servicios.DashboardService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,14 +14,26 @@ import org.springframework.web.bind.annotation.*;
 public class DashboardController {
 
     private final DashboardService dashboard;
+    private final UserRepository users;
 
-    public DashboardController(DashboardService dashboard) {
+    public DashboardController(DashboardService dashboard, UserRepository users) {
         this.dashboard = dashboard;
+        this.users = users;
     }
 
+    // ✅ Endpoint viejo (por ID) - puedes mantenerlo si ADMIN lo necesita
     @GetMapping("/programmer/{programmerId}")
     @PreAuthorize("hasAnyRole('PROGRAMMER','ADMIN')")
     public ResponseEntity<ProgrammerDashboardResponse> programmer(@PathVariable Long programmerId) {
+        return ResponseEntity.ok(dashboard.programmer(programmerId));
+    }
+
+    // ✅ Endpoint seguro (/me) - PROGRAMMER solo ve lo suyo
+    @GetMapping("/me/programmer")
+    @PreAuthorize("hasRole('PROGRAMMER')")
+    public ResponseEntity<?> myDashboardProgrammer() {
+        String email = AuthUtil.currentEmail();
+        Long programmerId = users.findIdByEmail(email);
         return ResponseEntity.ok(dashboard.programmer(programmerId));
     }
 }
