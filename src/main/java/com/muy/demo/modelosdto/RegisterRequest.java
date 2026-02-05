@@ -9,5 +9,6 @@ public class RegisterRequest {
     @NotBlank public String fullName;
     @Email @NotBlank public String email;
     @NotBlank public String password;
+    public String phone;
     @NotNull public Role role; // ADMIN crea PROGRAMMER; EXTERNAL se auto-registra
 }

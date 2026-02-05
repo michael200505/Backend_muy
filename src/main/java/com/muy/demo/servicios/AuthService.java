@@ -29,17 +29,22 @@ public class AuthService {
         return new AuthResponse(jwt.generateToken(req.email));
     }
 
-    public void register(RegisterRequest req) {
-        if (users.existsByEmail(req.email)) throw new IllegalArgumentException("Email ya registrado");
+   public void register(RegisterRequest req) {
+    if (users.existsByEmail(req.email)) throw new IllegalArgumentException("Email ya registrado");
 
-        // regla simple: EXTERNAL puede auto-registrarse; PROGRAMMER/ADMIN deberían crearse desde ADMIN (lo controlas en Controller)
-        User u = new User();
-        u.setFullName(req.fullName);
-        u.setEmail(req.email);
-        u.setPasswordHash(encoder.encode(req.password));
-        u.setRole(req.role != null ? req.role : Role.EXTERNAL);
-        users.save(u);
-    }
+    // regla simple: EXTERNAL puede auto-registrarse; PROGRAMMER/ADMIN deberían crearse desde ADMIN (lo controlas en Controller)
+    User u = new User();
+    u.setFullName(req.fullName);
+    u.setEmail(req.email);
+
+    // ✅ AGREGA ESTO:
+    u.setPhone(req.phone);
+
+    u.setPasswordHash(encoder.encode(req.password));
+    u.setRole(req.role != null ? req.role : Role.EXTERNAL);
+    users.save(u);
+}
+
 
     // ✅ NUEVO: fuerza EXTERNAL y reutiliza register()
     public void registerExternal(RegisterRequest req) {

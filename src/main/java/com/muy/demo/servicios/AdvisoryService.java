@@ -98,6 +98,19 @@ public class AdvisoryService {
                 "Asesoría solicitada",
                 "Tu asesoría fue creada y está PENDIENTE.\nID: " + saved.getId());
 
+        // =========================
+        // ✅ WhatsApp (después de emails)
+        // =========================
+        String wMsgP = "Nueva asesoría solicitada. ID: " + saved.getId() + " Inicio: " + saved.getStartAt();
+        String wMsgE = "Tu asesoría fue solicitada. ID: " + saved.getId() + " Estado: PENDING";
+
+        if (programmer.getPhone() != null && !programmer.getPhone().isBlank()) {
+            jakarta.notifyWhatsapp(programmer.getPhone(), wMsgP);
+        }
+        if (external.getPhone() != null && !external.getPhone().isBlank()) {
+            jakarta.notifyWhatsapp(external.getPhone(), wMsgE);
+        }
+
         return saved;
     }
 

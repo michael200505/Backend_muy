@@ -74,15 +74,15 @@ public class JakartaClient {
     }
 
     public void notifyWhatsapp(String phone, String message) {
-        String url = baseUrl + "/notifications/whatsapp";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+    String url = baseUrl + "/notifications/whatsapp";
+    org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
 
-        Map<String, Object> payload = Map.of(
-                "phone", phone,
-                "message", message
-        );
+    java.util.Map<String, Object> payload = java.util.Map.of(
+            "phone", phone,
+            "message", message
+    );
 
-        rest.exchange(url, HttpMethod.POST, new HttpEntity<>(payload, headers), Void.class);
-    }
+    rest.exchange(url, org.springframework.http.HttpMethod.POST, new org.springframework.http.HttpEntity<>(payload, headers), Void.class);
+}
 }
