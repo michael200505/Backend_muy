@@ -27,7 +27,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtFilter) throws Exception {
-        http.csrf(csrf -> csrf.disable());
+        
+        http
+        .cors(cors -> {})
+        .csrf(csrf -> csrf.disable());
+
+        // ✅ ACTIVA CORS global
+        http.cors(cors -> {});
+
         http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.authorizeHttpRequests(auth -> auth
