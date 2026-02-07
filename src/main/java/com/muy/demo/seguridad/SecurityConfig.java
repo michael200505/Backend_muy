@@ -30,36 +30,36 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtFilter) throws Exception {
 
-        // ✅ Habilitar CORS + desactivar CSRF (API con JWT)
-        http.cors(cors -> {});
         http.csrf(csrf -> csrf.disable());
+        http.cors(cors -> {});
 
-        // ✅ Sin sesión (JWT)
         http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // ✅ Permisos
         http.authorizeHttpRequests(auth -> auth
-                // 🔥 Permitir preflight CORS (frontend)
+                // Preflight CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 🔥 Permitir raíz y error para que no te salga 403 en localhost:8080/
+                // ✅ Permitir raíz y error (para que no salga 403)
                 .requestMatchers("/", "/error").permitAll()
 
-                // ✅ Auth y Swagger públicos
+                // ✅ Swagger
                 .requestMatchers(
-                        "/api/auth/**",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html"
                 ).permitAll()
 
-                // 🔒 Todo lo demás requiere JWT
+                // ✅ Auth
+                .requestMatchers("/api/auth/**").permitAll()
+
+                // ✅ TEMPORAL: permitir tus reportes sin token (para probar)
+                .requestMatchers("/api/reports/**").permitAll()
+
+                // Lo demás protegido
                 .anyRequest().authenticated()
         );
 
-        // ✅ Filtro JWT antes del filtro de usuario/contraseña
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 }
